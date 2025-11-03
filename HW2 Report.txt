@@ -1,0 +1,75 @@
+HW2 Report  
+Course: NLP 243  
+By: Bab Jan  
+
+---
+
+1. Language Modelling and Next-Token Prediction
+
+Language modelling is the task of learning the probability distribution over sequences of tokens in natural language. In other words, the model learns how likely a given token is to appear after a sequence of preceding tokens. This is commonly implemented as a *next-token prediction* problem — at each position, the model predicts the next token given all previous ones. Once trained, such models can both estimate sequence probabilities (used to compute *perplexity*) and generate coherent text through autoregressive sampling.
+
+In this homework, I implemented a **decoder-only Transformer (GPT-style)** model trained on the Penn Treebank dataset (approximately one million tokens). The objective was to minimize the cross-entropy loss between predicted token distributions and the true next tokens, while ignoring padding tokens. The final evaluation metric is *perplexity*, which reflects how well the model predicts unseen text — lower perplexity indicates better language modelling performance.
+
+---
+
+2. The Self-Attention Mechanism
+
+Self-attention is the central component of the Transformer architecture. It allows each token in a sequence to dynamically attend to all previous tokens and weigh their importance when forming contextual representations. Each input token is projected into **query (Q)**, **key (K)**, and **value (V)** vectors. Attention scores are computed as scaled dot products of Q and K, normalized with softmax, and used to combine values V. This enables the model to capture both short- and long-range dependencies efficiently.
+
+In multi-head attention, several attention heads operate in parallel, each learning distinct contextual relationships. The outputs are concatenated and linearly projected to form the final representation. During training, I applied a **causal mask** to ensure that each position only attends to past and present tokens, preventing “future peeking” and preserving the autoregressive property required for next-token prediction.
+
+---
+
+3. Model Components and Hyperparameters
+
+My model, named **`GPTLanguageModel`**, follows a classic decoder-only Transformer design. It includes:
+- **Token Embeddings:** Convert discrete token IDs into dense 256-dimensional vectors.
+- **Sinusoidal Positional Encodings:** Added to token embeddings to encode token order information (fixed, non-learnable).
+- **Transformer Blocks (×6):** Each block consists of  
+  - LayerNorm → Multi-Head Self-Attention (8 heads) → Residual connection  
+  - LayerNorm → 2-Layer MLP (4× expansion, GELU activation) → Residual connection.
+- **Final LayerNorm and Linear Head:** Project hidden states to vocabulary logits (size 50,257).
+
+**Loss:** Cross-entropy with `ignore_index = -100` to exclude padding.  
+**Optimizer:** AdamW with learning rate 3e-4.  
+**Regularization:** Dropout = 0.1 and gradient clipping (1.0).  
+**Context window (block size):** 150 tokens.  
+**Parameter count:** ~30.47 million (well below the 50M limit).  
+**Hardware:** NVIDIA GPU (23.6 GB).  
+
+---
+
+4. Training and Evaluation Results
+
+Training proceeded for 6 epochs with batch size 32. Validation perplexity steadily decreased, indicating good generalization. The final model achieved:
+
+| Dataset Split | Average Loss | Perplexity |
+|----------------|---------------|-------------|
+| Train | 3.88 | **47.28** |
+| Validation | 4.12 | **61.86** |
+| Test | 4.01 | **55.26** |
+
+The model learned meaningful token dependencies and produced smooth convergence without overfitting. Perplexity values are consistent with expectations for a compact GPT-style architecture trained on the Penn Treebank dataset.
+
+---
+
+5. Advanced and Discussion (Optional)
+
+Due to limited compute time, I focused on the base GPT configuration rather than additional extensions. However, the architecture is modular — sinusoidal embeddings can easily be replaced with **Rotary Positional Embeddings (RoPE)** for advanced experiments. I also verified that the causal mask, padding handling, and GPT-2 tokenizer integration fully comply with the evaluation pipeline provided (`evaluation.py`).
+
+Future improvements could include testing RoPE, top-k or nucleus sampling for generation, and deeper architectures with parameter sharing to increase capacity under the 50 M limit.
+
+---
+
+6. Conclusion
+
+This homework implemented a fully functional, well-regularized **GPT-style decoder-only language model** trained with next-token prediction. The design uses causal masking, sinusoidal positions, and cross-entropy with padding ignored — all meeting the instructor’s technical and structural requirements. The resulting model (≈30 M parameters) achieved solid perplexity scores and efficient GPU utilization, demonstrating successful mastery of modern Transformer-based language modelling.
+
+---
+
+Best Model File:** `best_model.pt` (uploaded to Google Drive, ID inserted in `download_best_model.py`)  
+Total Parameters:** 30.47 M  
+Framework:** PyTorch 2.9.0 + CUDA  
+Tokenizer:** GPT-2 (Hugging Face Transformers)
+
+---
